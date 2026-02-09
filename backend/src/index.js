@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { PrismaClient } from '@prisma/client';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
@@ -7,6 +9,7 @@ import resourceRoutes from './routes/resources.js';
 import statsRoutes from './routes/stats.js';
 import { authenticate } from './middleware/auth.js';
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const prisma = new PrismaClient();
 
@@ -21,6 +24,14 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', authenticate, userRoutes);
 app.use('/api/resources', authenticate, resourceRoutes);
 app.use('/api/stats', authenticate, statsRoutes);
+
+// Serve frontend static files (for single-container deploys like Render)
+const publicDir = path.join(__dirname, '..', 'public');
+app.use(express.static(publicDir));
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api')) return next();
+  res.sendFile(path.join(publicDir, 'index.html'));
+});
 
 app.use((err, req, res, next) => {
   console.error(err.stack);
